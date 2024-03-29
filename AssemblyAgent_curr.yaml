@@ -1,0 +1,92 @@
+# Navigate to the directory where you installed the ML-Agents Toolkit.
+# -> /Users/chong/Dropbox/2024_Spring/ml-agents
+# mlagents-learn <trainer-config-file> --env=<env_name for executable> --run-id=<run-identifier> --results-dir=<results directory>
+# -> unity : mlagents-learn /Users/chong/Dropbox/2024_Spring/AssemblyAgent/Assets/Training/AssemblyAgent.yaml --run-id=555_1 --results-dir=/Users/chong/Dropbox/2024_Spring/AssemblyAgent/Assets/Training/results
+# -> executable : chong@dhcp-10-29-135-153 ml-agents % mlagents-learn /Users/chong/Dropbox/2024_Spring/AssemblyAgent/Assets/Training/AssemblyAgent.yaml --run-id=555_1 --results-dir=/Users/chong/Dropbox/2024_Spring/AssemblyAgent/Assets/Training/results --resume --no-graphics
+
+# torch version problem : https://github.com/Unity-Technologies/ml-agents/issues/5895
+# torch : 1.13
+# numpy : 1.19
+
+#  numpy==1.21.2
+# python                    3.10.12
+# mlagents                  1.0.0 
+# torch                     1.13.1 
+
+# https://github.com/gzrjzcx/ML-agents/blob/master/docs/Training-Curriculum-Learning.md
+# Curriculum learning 5.0e5 on easy/intermediate/hard files 
+
+env_settings:
+  # env_path: /Users/chong/Dropbox/2024_Spring/AssemblyAgent/mac_executable/mac_executable_555_1.app
+  base_port: 5085
+  num_envs: 1
+  timeout_wait: 10
+  seed: -1
+  max_lifetime_restarts: 10
+  restarts_rate_limit_n: 1
+  restarts_rate_limit_period_s: 60
+
+engine_settings:
+  width: 84
+  height: 84
+  quality_level: 5
+  time_scale: 20
+  target_frame_rate: -1
+  capture_frame_rate: 60
+  no_graphics: false
+
+checkpoint_settings:
+  run_id: 555_curr
+  initialize_from: null
+  load_model: false
+  resume: false
+  force: true
+  train_model: false
+  inference: false
+
+torch_settings:
+  device: null
+
+behaviors:
+  AssemblyAgent:
+    trainer_type: ppo
+    hyperparameters:            # update the model every buffer_size number of timesteps, During this update we divide the buffer into batch_size batches and perform modeling update on each of these batches one at a time. This process is repeated num_epochs 
+      batch_size: 256            # Number of experiences in each iteration of gradient descent. This should always be multiple times smaller than buffer_size. (Discrete, PPO & SAC): 32 - 512.
+      buffer_size: 4096         # Number of experiences to collect before updating the policy model. This should be multiple times larger than batch_size.  PPO: 2048 - 409600
+      learning_rate: 0.0003
+      learning_rate_schedule: linear
+      
+      # PPO-specific hyperparameters
+      beta: 1.0e-4              # Strength of the entropy regularization, which makes the policy "more random." This ensures that agents properly explore the action space during training (1e-4 - 1e-2)
+      beta_schedule: constant
+      epsilon: 0.2              # Influences how rapidly the policy can evolve during training. Corresponds to the acceptable threshold of divergence between the old and new policies during gradient descent updating (0.1 - 0.3)
+      epsilon_schedule: linear
+      lambd: 0.95               # how much the agent relies on its current value estimate when calculating an updated value estimate.
+      num_epoch: 3              # Number of passes to make through the experience buffer when performing gradient descent optimization, The larger the batch_size, the larger it is acceptable to make this. (3-10)
+      shared_critic: False
+
+    network_settings:
+      hidden_units: 256         # Number of units in the hidden layers of the neural network. (32 - 512)
+      num_layers: 3             # 1 - 3
+      normalize: False          # (default = false) Whether normalization is applied to the vector observation inputs. This normalization is based on the running average and variance of the vector observation. 
+                                # helpful in cases with complex continuous control problems, but may be harmful with simpler discrete control problems.
+      vis_encode_type: simple   # encoding visual observations (nature_cnn, resnet, match3, fully_connected)
+                                # Due to the size of convolution kernel, there is a minimum observation size limitation that each encoder type can handle - simple: 20x20, nature_cnn: 36x36, resnet: 15 x 15, match3: 5x5.
+      memory:                   # use RNNs
+        sequence_length: 8     # how long the sequences of experiences must be while training (4-128)
+        memory_size: 64        # the size of the array of floating point numbers used to store the hidden state of the recurrent neural network of the policy. must be a multiple of 2, and should scale with the amount of information you expect the agent will need to remember in order to successfully complete the task.(32-256)
+
+    # Trainer configurations common to all trainers
+    max_steps: 5.0e5            # Total number of steps (i.e., observation collected and action taken) that must be taken in the environment (or across all environments if using multiple in parallel) before ending the training process
+    time_horizon: 32            # How many steps of experience to collect per-agent before adding it to the experience buffer, should be large enough to capture all the important behavior within a sequence of an agent's actions. Should add multiple times within one buffer
+    summary_freq: 1000         # granularity of graphs in Tensorboard
+    keep_checkpoints: 5 
+    even_checkpoints: false      # if true, ignores checkpoint_interval and evenly distributes checkpoints throughout training based on keep_checkpointsand max_steps (checkpoint_interval = max_steps / keep_checkpoints)
+    checkpoint_interval: 5000  # Each checkpoint saves the .onnx files in results/ folder.
+    threaded: false             # Allow environments to step while updating the model. 
+    init_path: null
+
+    reward_signals:
+      extrinsic:
+        gamma: 0.99             # Discount factor for future rewards coming from the environment. how far into the future the agent should care about possible rewards. The value should be large to prepare for the distant future
+        strength: 1.0           # Factor by which to multiply the reward given by the environment.

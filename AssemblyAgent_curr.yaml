@@ -17,9 +17,9 @@
 # Curriculum learning 5.0e5 on easy/intermediate/hard files 
 
 env_settings:
-  # env_path: /Users/chong/Dropbox/2024_Spring/AssemblyAgent/mac_executable/mac_executable_555_1.app
+  env_path:  /Users/chong/Dropbox/2024_Spring/AssemblyAgent/mac_executable_555_curr/mac_555_curr.app
   base_port: 5085
-  num_envs: 1
+  num_envs: 6
   timeout_wait: 10
   seed: -1
   max_lifetime_restarts: 10
